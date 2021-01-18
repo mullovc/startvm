@@ -97,11 +97,13 @@ image="${image_basedir}/${vmname}.qcow2"
 
 
 qemu-system-x86_64 \
-    -enable-kvm \
+    -machine accel=kvm,vmport=off \
     -cpu host \
     -smp ${ncpus} \
     -m ${memory} \
     -bios "$BIOS" \
+    -sandbox on \
     -nic user,model=virtio-net-pci,hostfwd="tcp:127.0.0.1:$sshport-:22" \
     -vga "$VGA" \
+    -usbdevice tablet \
     -drive if=virtio,file="${image}" "${additional_params[@]}"
