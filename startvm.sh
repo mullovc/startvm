@@ -10,7 +10,7 @@ ncpus=1
 
 hostkernel=
 hostinitrd=
-cmdline=
+cmdline=()
 
 show_usage() {
     cat << EOF
@@ -35,12 +35,12 @@ use_hostkernel() {
     # TODO make sure parameters are present only once
     hostkernel="/boot/vmlinuz-linux"
     # non-fallback initrd doesn't contain necessary bock device drivers
-    hostinitrd="/boot/initramfs-linux-fallback.img"
+    hostinitrd="$image_basedir/initrd-virtio.img"
     #rootdevice="/dev/sda2"
     rootdevice="UUID=2b82b51a-c465-4575-819f-7e12b1d1b919"
-    cmdline=("root=$rootdevice rw")
-    [[ $# > 0 ]] && cmdline+=("$1")
-    additional_params+=(-kernel "$hostkernel" -initrd "$hostinitrd" -append "${cmdline[*]}")
+    cmdline+=("root=$rootdevice rw")
+    additional_params+=(-drive if=virtio,file="$HOME/VMs/kernelmodules.ext2")
+    additional_params+=(-kernel "$hostkernel" -initrd "$hostinitrd")
 }
 
 
@@ -58,14 +58,16 @@ do
             use_hostkernel
             ;;
         a)
-            use_hostkernel "${OPTARG}"
+            [[ $hostkernel ]] || use_hostkernel
+            cmdline+=("${OPTARG}")
             ;;
         A)
             additional_params+=(-device ES1370)
             ;;
         s)
             VGA=none
-            use_hostkernel "console=ttyS0 panic=1"
+            [[ $hostkernel ]] || use_hostkernel
+            cmdline+=("console=ttyS0 panic=1")
             additional_params+=(-nographic -serial mon:stdio -no-reboot)
             ;;
         S)
@@ -94,6 +96,7 @@ vmname="${1:-xorg}"
 image="${image_basedir}/${vmname}.qcow2"
 
 [[ $VGA = none ]] || additional_params+=(-display gtk,gl=on)
+[[ ${#cmdline[@]} > 0 ]] && additional_params+=(-append "${cmdline[*]}")
 
 
 qemu-system-x86_64 \
