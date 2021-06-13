@@ -24,6 +24,9 @@ start a KVM virtual machine
     -A      audio
     -s      non-graphical mode (serial port)
     -S      immutable VM (snapshot mode)
+    -B      use Seabios firmware
+    -Q      additional Qemu parameters
+    -m      amount of virtual memory
 
 EOF
 }
@@ -47,7 +50,7 @@ use_hostkernel() {
 
 
 OPTIND=1
-while getopts 'hHSsAa:F:' opt
+while getopts 'hHSsAa:F:BQ:m:' opt
 do
     case "$opt" in
         h)
@@ -75,6 +78,16 @@ do
             ;;
         F)
             additional_params+=(-hdb "fat:rw:${OPTARG}")
+            ;;
+        B)
+            BIOS="/usr/share/qemu/bios-256k.bin"
+            ;;
+        Q)
+            # explicitly do not escape
+            additional_params+=(${OPTARG})
+            ;;
+        m)
+            memory="${OPTARG}"
             ;;
         *)
             show_usage
