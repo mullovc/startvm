@@ -118,7 +118,7 @@ qemu-system-x86_64 \
     -smp ${ncpus} \
     -m ${memory} \
     -bios "$BIOS" \
-    -sandbox on \
+    -sandbox on,spawn=deny \
     -nic user,model=virtio-net-pci,hostfwd="tcp:127.0.0.1:$sshport-:22" \
     -vga "$VGA" \
     -drive if=virtio,file="${image}" "${additional_params[@]}"
