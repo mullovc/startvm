@@ -24,7 +24,7 @@ start a KVM virtual machine
     -a      append to kernel commandline (implied -H)
     -A      audio
     -s      non-graphical mode (serial port)
-    -S      immutable VM (snapshot mode)
+    -M      mutable VM
     -B      use Seabios firmware
     -Q      additional Qemu parameters
     -m      amount of virtual memory
@@ -51,7 +51,7 @@ use_hostkernel() {
 
 
 OPTIND=1
-while getopts 'hHSsAa:F:BQ:m:' opt
+while getopts 'hHMsAa:F:BQ:m:' opt
 do
     case "$opt" in
         h)
@@ -74,8 +74,8 @@ do
             cmdline+=("console=ttyS0 panic=1")
             additional_params+=(-nographic -serial mon:stdio -no-reboot)
             ;;
-        S)
-            additional_params+=(-snapshot)
+        M)
+            mutable=y
             ;;
         F)
             additional_params+=(-hdb "fat:rw:${OPTARG}")
@@ -109,6 +109,7 @@ done
 vmname="${1:-xorg}"
 image="${image_basedir}/${vmname}.qcow2"
 
+[[ ${mutable:-} = y ]] || additional_params+=(-snapshot)
 [[ $VGA = none ]] || additional_params+=(-display gtk,gl=on)
 [[ ${#cmdline[@]} > 0 ]] && additional_params+=(-append "${cmdline[*]}")
 
