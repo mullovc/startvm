@@ -5,8 +5,9 @@ BIOS=/usr/share/ovmf/x64/OVMF.fd
 VGA=virtio
 image_basedir="$HOME/VMs"
 
-memory=4096
-ncpus=1
+# set default values
+: ${memory:=4096}
+: ${ncpus:=1}
 
 hostkernel=
 hostinitrd=
