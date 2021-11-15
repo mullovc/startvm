@@ -1,0 +1,15 @@
+#!/usr/bin/ash
+
+run_latehook() {
+    local partlabel modulespath
+
+    partlabel="$(blkid -L kernel_modules)" || exit 0
+
+    modulespath="/usr/lib/modules/$(uname -r)"
+    mountflags="ro,noatime"
+
+    mkdir -p "/new_root${modulespath}"
+    mount ${mountflags:+-o $mountflags} "$partlabel" "/new_root${modulespath}"
+}
+
+# vim: set ft=sh ts=4 sw=4 et:
