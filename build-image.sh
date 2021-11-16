@@ -4,6 +4,7 @@ set -u
 NEWROOT=$(mktemp -d)
 FIFO=$(mktemp -u)
 IMAGE="$1"
+PARTSIZE=10240M
 
 setup_child() {
     childpid="$(cat $FIFO)"
@@ -23,7 +24,6 @@ echo \$\$ > $FIFO
 cat $FIFO > /dev/null
 mount -t tmpfs sandboxroot "${NEWROOT}"
 
-#mkdir -p "${NEWROOT}"/var/lib/pacman
 mkdir -m 0755 -p "${NEWROOT}"/var/{cache/pacman/pkg,lib/pacman,log} \
     "${NEWROOT}"/{dev,run,etc/pacman.d} \
     "${NEWROOT}"/etc/pacman.d/hooks
@@ -44,36 +44,18 @@ do
     mount --bind /dev/"\${dev}" "${NEWROOT}"/dev/"\${dev}"
 done
 
-#cat > "${NEWROOT}"/install.sh << EOFEOF
-##!/bin/sh
-#mount -t proc proc "${NEWROOT}"/proc
-#packages="base linux"
-#pacman -r "${NEWROOT}" --noconfirm --hookdir "${NEWROOT}"/etc/pacman.d/hooks -Sy base linux
-#EOFEOF
-#chmod +x "${NEWROOT}"/install.sh
-#unshare --pid --fork "${NEWROOT}"/install.sh
-
 mkdir -m 0755 -p "${NEWROOT}"/var/lib/pacman/sync
 cp /var/lib/pacman/sync/*.db "${NEWROOT}"/var/lib/pacman/sync
 
 unshare --pid --fork /bin/bash << EOFEOF
 mount -t proc proc "${NEWROOT}"/proc
-packages="base linux"
+packages="base"
 pacman -r "${NEWROOT}" --noconfirm --hookdir "${NEWROOT}"/etc/pacman.d/hooks -S \\\$packages
 EOFEOF
 
 umount -l dev sys proc run tmp
-blksize=512
-start=2048
-offset=\$((blksize*start))
-partsize=10240
-#image="/tmp/img.img"
-truncate -s \$((partsize + offset/1024/1024))MiB "$IMAGE"
-sfdisk "$IMAGE" <<< "type=83, start=\${start}, size=\${partsize}MiB"
-mke2fs -E offset=\$offset -d "${NEWROOT}" "$IMAGE" "\${partsize}M"
 
-cd "${NEWROOT}"
-bash -i
+mke2fs -L vmroot -d "${NEWROOT}" "${IMAGE}" "${PARTSIZE}"
 EOF
 chmod +x "${NEWROOT}"/init
 
