@@ -3,15 +3,16 @@ set -u
 
 BIOS=/usr/share/ovmf/x64/OVMF.fd
 VGA=virtio
-image_basedir="$HOME/VMs"
+image_basedir="${XDG_DATA_DIR:-$HOME/.local/share}/startvm"
 
 # set default values
 : ${memory:=4096}
 : ${ncpus:=1}
 : ${fullscreen:=on}
 
-hostkernel=
-hostinitrd=
+kernel="/boot/vmlinuz-linux"
+initrd="$image_basedir/initrd-virtio.img"
+rootdevice="LABEL=vmroot"
 cmdline=()
 
 show_usage() {
@@ -36,21 +37,6 @@ EOF
 # array containing additional runtime dependent parameters
 declare -a additional_params
 
-use_hostkernel() {
-    # TODO make sure parameters are present only once
-    hostkernel="/boot/vmlinuz-linux"
-    # non-fallback initrd doesn't contain necessary bock device drivers
-    hostinitrd="$image_basedir/initrd-virtio.img"
-    #rootdevice="/dev/sda2"
-    rootdevice="UUID=2b82b51a-c465-4575-819f-7e12b1d1b919"
-    cmdline+=("root=$rootdevice rw")
-    additional_params+=(-drive if=virtio,file="$HOME/VMs/kernelmodules.ext2")
-    additional_params+=(-kernel "$hostkernel" -initrd "$hostinitrd")
-}
-
-
-
-
 OPTIND=1
 while getopts 'hHMsAa:F:BQ:m:' opt
 do
@@ -60,10 +46,10 @@ do
             exit 0
             ;;
         H)
-            use_hostkernel
+            usekernel=y
             ;;
         a)
-            [[ $hostkernel ]] || use_hostkernel
+            usekernel=y
             cmdline+=("${OPTARG}")
             ;;
         A)
@@ -71,7 +57,7 @@ do
             ;;
         s)
             VGA=none
-            [[ $hostkernel ]] || use_hostkernel
+            usekernel=y
             cmdline+=("console=ttyS0 panic=1")
             additional_params+=(-nographic -serial mon:stdio -no-reboot)
             ;;
@@ -79,7 +65,10 @@ do
             mutable=y
             ;;
         F)
-            additional_params+=(-hdb "fat:rw:${OPTARG}")
+            fatrorw=ro
+            fatsnapshot=on
+            [[ $fatrorw = rw ]] && fatsnapshot=off
+            additional_params+=(-drive "if=virtio,snapshot=$fatsnapshot,file=fat:$fatrorw:${OPTARG}")
             ;;
         B)
             BIOS="/usr/share/qemu/bios-256k.bin"
@@ -112,7 +101,13 @@ image="${image_basedir}/${vmname}.qcow2"
 
 [[ ${mutable:-} = y ]] || additional_params+=(-snapshot)
 [[ $VGA = none ]] || additional_params+=(-display gtk,gl=on,full-screen="$fullscreen")
-[[ ${#cmdline[@]} > 0 ]] && additional_params+=(-append "${cmdline[*]}")
+
+if [[ ${usekernel:-} = y ]]; then
+    cmdline+=("root=$rootdevice rw")
+    additional_params+=(-drive if=virtio,snapshot=on,file="$image_basedir/kernelmodules.ext2")
+    additional_params+=(-kernel "$kernel" -initrd "$initrd")
+    additional_params+=(-append "${cmdline[*]}")
+fi
 
 
 qemu-system-x86_64 \
