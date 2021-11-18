@@ -1,19 +1,24 @@
 #!/bin/bash
 set -u
 
-BIOS=/usr/share/ovmf/x64/OVMF.fd
+# default configuration options
+BIOS="/usr/share/qemu/bios-256k.bin"
 VGA=virtio
+memory=4096
+ncpus=1
+fullscreen=off
 image_basedir="${XDG_DATA_DIR:-$HOME/.local/share}/startvm"
-
-# set default values
-: ${memory:=4096}
-: ${ncpus:=1}
-: ${fullscreen:=on}
-
+defaultimage=base
 kernel="/boot/vmlinuz-linux"
 initrd="$image_basedir/initrd-virtio.img"
 rootdevice="LABEL=vmroot"
 cmdline=()
+additional_params=()
+
+# user configuration
+if [[ -f "${XDG_CONFIG_DIR:-$HOME/.config}/startvm/config" ]]; then
+    source "${XDG_CONFIG_DIR:-$HOME/.config}/startvm/config"
+fi
 
 show_usage() {
     cat << EOF
@@ -33,9 +38,6 @@ start a KVM virtual machine
 
 EOF
 }
-
-# array containing additional runtime dependent parameters
-declare -a additional_params
 
 OPTIND=1
 while getopts 'hHMsAa:F:BQ:m:' opt
@@ -96,7 +98,7 @@ do
 done
 
 
-vmname="${1:-xorg}"
+vmname="${1:-$defaultimage}"
 image="${image_basedir}/${vmname}.qcow2"
 
 [[ ${mutable:-} = y ]] || additional_params+=(-snapshot)
