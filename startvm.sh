@@ -8,6 +8,7 @@ image_basedir="$HOME/VMs"
 # set default values
 : ${memory:=4096}
 : ${ncpus:=1}
+: ${fullscreen:=on}
 
 hostkernel=
 hostinitrd=
@@ -110,7 +111,7 @@ vmname="${1:-xorg}"
 image="${image_basedir}/${vmname}.qcow2"
 
 [[ ${mutable:-} = y ]] || additional_params+=(-snapshot)
-[[ $VGA = none ]] || additional_params+=(-display gtk,gl=on)
+[[ $VGA = none ]] || additional_params+=(-display gtk,gl=on,full-screen="$fullscreen")
 [[ ${#cmdline[@]} > 0 ]] && additional_params+=(-append "${cmdline[*]}")
 
 
