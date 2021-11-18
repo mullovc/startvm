@@ -1,0 +1,52 @@
+#!/usr/bin/ash
+OFS_DIRS="/overlay"
+OFS_COWSPACE="${OFS_DIRS}/cowspace"
+OFS_UPPER="${OFS_COWSPACE}/upper"
+OFS_WORK="${OFS_COWSPACE}/work"
+
+run_hook() {
+    # default mount handler is
+    # mount ${rootfstype:+-t $rootfstype} -o ${rwopt:-ro}${rootflags:+,$rootflags} "$root" "/new_root"
+    # make it into
+    # mount -t overlay -o rw,lowerdir=rootmnt:vdb1mnt:vdc1mnt:...,upperdir=... "rootfs" "/new_root"
+
+    # skip overlaying when there's only a single VM image
+    [ /dev/vd[b-z]1 = "/dev/vd[b-z]1" ] && return
+
+    # mount base root filesystem
+    diskname="$(basename "$root")"
+    mkdir -p "$OFS_DIRS/$diskname"
+    mount -o ro "$root" "$OFS_DIRS/$diskname"
+    rootflags="${rootflags:+$rootflags,}lowerdir=$OFS_DIRS/$diskname"
+    #rootdev="$(resolve_device "$root")"
+
+    # get the last disk for usage as upperdir
+    for disk in /dev/vd[b-z]1; do upper="$disk"; done
+
+    # mount do the same for every other lower layer
+    for disk in /dev/vd[b-z]1
+    do
+        [ -b "$disk" ] || continue
+        [ "x$disk" = "x$upper" ] && continue
+        #[ "x$disk" = "x$rootdev" ] && continue
+
+        diskname="$(basename "$disk")"
+        lowerdir="$OFS_DIRS/$diskname"
+        mkdir -p "$lowerdir"
+        mount -o ro "$disk" "$lowerdir"
+        [ -d "$lowerdir/upper" ] && rootflags="$rootflags:$lowerdir/upper"
+    done
+
+    # mount upper layer
+    mkdir -p "$OFS_COWSPACE"
+    mount -o rw "$upper" "$OFS_COWSPACE"
+	[ -d "$OFS_UPPER" ] || mkdir -p "$OFS_UPPER"
+	[ -d "$OFS_WORK" ] || mkdir -p "$OFS_WORK"
+    rootflags="$rootflags,upperdir=$OFS_UPPER,workdir=$OFS_WORK"
+
+    # name of the merged overlay mount
+    root="rootfs"
+    rootfstype="overlay"
+}
+
+# vim: set ft=sh ts=4 sw=4 et:

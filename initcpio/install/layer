@@ -1,0 +1,17 @@
+#!/bin/bash
+
+build() {
+    local mod
+
+    add_module "overlay"
+
+    add_runscript
+}
+
+help() {
+    cat <<HELPEOF
+Layers VM images using OverlayFS
+HELPEOF
+}
+
+# vim: set ft=sh ts=4 sw=4 et:
