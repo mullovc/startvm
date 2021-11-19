@@ -1,0 +1,14 @@
+[Unit]
+Description=Run VM image build script
+After=network-online.target basic.target
+Wants=network-online.target basic.target
+
+[Service]
+ExecStartPre=/usr/bin/mount -o ro "LABEL=QEMU VVFAT" /mnt
+ExecStart=bash -xeuo pipefail /mnt/build
+ExecStopPre=/usr/bin/umount /mnt
+ExecStop=/usr/bin/systemctl poweroff
+Type=oneshot
+WorkingDirectory=/mnt
+StandardInput=tty
+StandardOutput=tty

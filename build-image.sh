@@ -50,11 +50,21 @@ done
 mkdir -m 0755 -p "${NEWROOT}"/var/lib/pacman/sync
 cp /var/lib/pacman/sync/*.db "${NEWROOT}"/var/lib/pacman/sync
 
+# XXX do pacman-key --init/--populate instead?
+# if there's a keyring on the host, copy it into the new root, unless it exists already
+if [[ -d /etc/pacman.d/gnupg && ! -d ${NEWROOT}/etc/pacman.d/gnupg ]]; then
+    cp -a /etc/pacman.d/gnupg "${NEWROOT}/etc/pacman.d/"
+fi
+
 unshare --pid --fork /bin/bash << EOFEOF
 mount -t proc proc "${NEWROOT}"/proc
 packages="base"
 pacman -r "${NEWROOT}" --noconfirm --hookdir "${NEWROOT}"/etc/pacman.d/hooks -S \\\$packages
 EOFEOF
+
+# FIXME absolute path
+cp -r baseconfig/* "${NEWROOT}"/
+cp /etc/pacman.d/mirrorlist "${NEWROOT}"/etc/pacman.d/mirrorlist
 
 umount -l dev sys proc run tmp
 

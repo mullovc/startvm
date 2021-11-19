@@ -1,0 +1,15 @@
+[Unit]
+Description=Update System
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=-/usr/bin/pacman -Syu
+ExecStartPost=/usr/bin/systemctl poweroff
+Type=oneshot
+Restart=on-failure
+StandardInput=tty
+StandardOutput=tty
+
+[Install]
+WantedBy=update.target
