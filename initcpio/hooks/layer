@@ -8,40 +8,39 @@ run_hook() {
     # default mount handler is
     # mount ${rootfstype:+-t $rootfstype} -o ${rwopt:-ro}${rootflags:+,$rootflags} "$root" "/new_root"
     # make it into
-    # mount -t overlay -o rw,lowerdir=rootmnt:vdb1mnt:vdc1mnt:...,upperdir=... "rootfs" "/new_root"
+    # mount -t overlay -o rw,lowerdir=<lowerk>:...:<lower2>:<lower1>,upperdir=<upper>,workdir=<work> "rootfs" "/new_root"
 
-    # skip overlaying when there's only a single VM image
-    [ /dev/vd[b-z]1 = "/dev/vd[b-z]1" ] && return
+    # skip overlaying when there's no lower layers
+    [ -n "$loweruuids" ] || return
 
-    # mount base root filesystem
-    diskname="$(basename "$root")"
-    mkdir -p "$OFS_DIRS/$diskname"
-    mount -o ro "$root" "$OFS_DIRS/$diskname"
-    rootflags="${rootflags:+$rootflags,}lowerdir=$OFS_DIRS/$diskname"
-    #rootdev="$(resolve_device "$root")"
-
-    # get the last disk for usage as upperdir
-    for disk in /dev/vd[b-z]1; do upper="$disk"; done
-
-    # mount do the same for every other lower layer
-    for disk in /dev/vd[b-z]1
+    # XXX executing `echo $loweruuids | while read ...` will execute the
+    #     while-loop in a subshell and discard the $rootflags value
+    echo "$loweruuids" > /tmp/loweruuids
+    # mount lower layers
+    lowerdirs=
+    while read -rd":" uuid
     do
-        [ -b "$disk" ] || continue
-        [ "x$disk" = "x$upper" ] && continue
-        #[ "x$disk" = "x$rootdev" ] && continue
+        disk="$(blkid --uuid "$uuid")"
+        [ -e "$disk" ] || continue
 
-        diskname="$(basename "$disk")"
-        lowerdir="$OFS_DIRS/$diskname"
+        lowerdir="$OFS_DIRS/$uuid"
         mkdir -p "$lowerdir"
         mount -o ro "$disk" "$lowerdir"
-        [ -d "$lowerdir/upper" ] && rootflags="$rootflags:$lowerdir/upper"
-    done
+        if [ -d "$lowerdir/upper" ]; then
+            lowerdirs="$lowerdir/upper:$lowerdirs"
+        else
+            lowerdirs="$lowerdir:$lowerdirs"
+        fi
+    done < /tmp/loweruuids
+
+    rootflags="${rootflags:+$rootflags,}lowerdir=${lowerdirs%:}"
 
     # mount upper layer
+    disk="$(blkid --uuid "$root")"
     mkdir -p "$OFS_COWSPACE"
-    mount -o rw "$upper" "$OFS_COWSPACE"
-	[ -d "$OFS_UPPER" ] || mkdir -p "$OFS_UPPER"
-	[ -d "$OFS_WORK" ] || mkdir -p "$OFS_WORK"
+    mount -o rw "$disk" "$OFS_COWSPACE"
+    [ -d "$OFS_UPPER" ] || mkdir -p "$OFS_UPPER"
+    [ -d "$OFS_WORK" ] || mkdir -p "$OFS_WORK"
     rootflags="$rootflags,upperdir=$OFS_UPPER,workdir=$OFS_WORK"
 
     # name of the merged overlay mount
