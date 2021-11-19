@@ -1,9 +1,12 @@
 #!/bin/bash
 set -u
 
+datadir="${XDG_DATA_DIR:-$HOME/.local/share}/startvm"
+imagedir="$datadir/images"
+
 NEWROOT=$(mktemp -d)
 FIFO=$(mktemp -u)
-IMAGE="$1"
+IMAGE="$imagedir/${1:-base}.ext2"
 PARTSIZE=10240M
 
 setup_child() {
@@ -58,6 +61,8 @@ umount -l dev sys proc run tmp
 mke2fs -L vmroot -d "${NEWROOT}" "${IMAGE}" "${PARTSIZE}"
 EOF
 chmod +x "${NEWROOT}"/init
+
+mkdir -p "$imagedir"
 
 mkfifo $FIFO
 setup_child &

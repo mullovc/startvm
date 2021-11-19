@@ -7,10 +7,12 @@ VGA=virtio
 memory=4096
 ncpus=1
 fullscreen=off
-image_basedir="${XDG_DATA_DIR:-$HOME/.local/share}/startvm"
+datadir="${XDG_DATA_DIR:-$HOME/.local/share}/startvm"
+imagedir="$datadir/images"
+bootfiledir="$datadir/boot"
 defaultimage=base
 kernel="/boot/vmlinuz-linux"
-initrd="$image_basedir/initrd-virtio.img"
+initrd="$bootfiledir/initrd-virtio.img"
 rootdevice="LABEL=vmroot"
 cmdline=()
 additional_params=()
@@ -99,14 +101,14 @@ done
 
 
 vmname="${1:-$defaultimage}"
-image="${image_basedir}/${vmname}.qcow2"
+image="${imagedir}/${vmname}.ext2"
 
 [[ ${mutable:-} = y ]] || additional_params+=(-snapshot)
 [[ $VGA = none ]] || additional_params+=(-display gtk,gl=on,full-screen="$fullscreen")
 
 if [[ ${usekernel:-} = y ]]; then
     cmdline+=("root=$rootdevice rw")
-    additional_params+=(-drive if=virtio,snapshot=on,file="$image_basedir/kernelmodules.ext2")
+    additional_params+=(-drive if=virtio,snapshot=on,file="$bootfiledir/kernelmodules.ext2")
     additional_params+=(-kernel "$kernel" -initrd "$initrd")
     additional_params+=(-append "${cmdline[*]}")
 fi

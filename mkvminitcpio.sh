@@ -4,12 +4,11 @@ set -eu
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 config="${SCRIPT_DIR}/initcpio/mkinitcpio.conf"
 kernel="/boot/vmlinuz-linux"
-#imagedir="$(pwd)"
-imagedir="${HOME}/VMs"
+datadir="${XDG_DATA_DIR:-$HOME/.local/share}/startvm"
+bootfiledir="$datadir/boot"
 imagename="initrd-virtio.img"
-#hookdirs=("${SCRIPT_DIR}/initcpio" "/etc/initcpio" "/usr/lib/initcpio")
 
-modulesimage="${imagedir}/kernelmodules.ext2"
+modulesimage="${bootfiledir}/kernelmodules.ext2"
 modulessize="512M"
 kernelversion="${1:-$(uname -r)}"
 
@@ -37,9 +36,10 @@ kver() {
     printf '%s' "$kver"
 }
 
+mkdir -p "$bootfiledir"
 
 unshare -r mkinitcpio \
-    -g "${imagedir}/${imagename}" \
+    -g "${bootfiledir}/${imagename}" \
     -k "${kernel}" \
     -c "${config}" \
     -D "${SCRIPT_DIR}/initcpio" -D "/etc/initcpio" -D "/usr/lib/initcpio"
