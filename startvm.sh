@@ -8,12 +8,12 @@ memory=4096
 ncpus=1
 fullscreen=off
 datadir="${XDG_DATA_DIR:-$HOME/.local/share}/startvm"
-imagedir="$datadir/images"
+layerdir="$datadir/layers"
+tagdir="$datadir/tags"
 bootfiledir="$datadir/boot"
 defaultimage=base
 kernel="/boot/vmlinuz-linux"
 initrd="$bootfiledir/initrd-virtio.img"
-rootdevice="LABEL=vmroot"
 cmdline=()
 additional_params=()
 
@@ -100,14 +100,37 @@ do
 done
 
 
-vmname="${1:-$defaultimage}"
-image="${imagedir}/${vmname}.ext2"
+tag="$1"
+tagfile="$tagdir/$tag"
+lowercount=$(( $(wc -l < "$tagfile") - 1 ))
+# check for `lowercount == 0` cause `mapfile -n0` still reads one line
+(( lowercount )) &&
+    mapfile -t -n$lowercount lowerlayers < $tagfile
+upperlayer="$(tail -1 $tagfile)"
+
+# disk images
+images=()
+loweruuids=
+for layer in "${lowerlayers[@]}"
+do
+    img="${layerdir}/${layer}.ext2"
+    images+=(-drive "if=virtio,file=${img},snapshot=on")
+    loweruuids="$loweruuids$layer:"
+done
+[[ $loweruuids ]] && cmdline+=("loweruuids=$loweruuids")
+
+upperimage="${layerdir}/${upperlayer}.ext2"
+images+=(-drive "if=virtio,file=${upperimage}")
+# XXX remove?
+#cmdline+=("upperuuid=$upperlayer")
+
+
 
 [[ ${mutable:-} = y ]] || additional_params+=(-snapshot)
 [[ $VGA = none ]] || additional_params+=(-display gtk,gl=on,full-screen="$fullscreen")
 
 if [[ ${usekernel:-} = y ]]; then
-    cmdline+=("root=$rootdevice rw")
+    cmdline+=("root=$upperlayer rw")
     additional_params+=(-drive if=virtio,snapshot=on,file="$bootfiledir/kernelmodules.ext2")
     additional_params+=(-kernel "$kernel" -initrd "$initrd")
     additional_params+=(-append "${cmdline[*]}")
@@ -124,4 +147,4 @@ qemu-system-x86_64 \
     -nodefaults \
     -nic user,model=virtio-net-pci,hostfwd="tcp:127.0.0.1:$sshport-:22" \
     -vga "$VGA" \
-    -drive if=virtio,file="${image}" "${additional_params[@]}"
+    "${images[@]}" "${additional_params[@]}"

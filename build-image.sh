@@ -2,11 +2,14 @@
 set -u
 
 datadir="${XDG_DATA_DIR:-$HOME/.local/share}/startvm"
-imagedir="$datadir/images"
+layerdir="$datadir/layers"
+tagdir="$datadir/tags"
 
+UUID=$(uuidgen)
 NEWROOT=$(mktemp -d)
 FIFO=$(mktemp -u)
-IMAGE="$imagedir/${1:-base}.ext2"
+IMAGE="$layerdir/$UUID.ext2"
+IMAGETAG="${1:-base}"
 PARTSIZE=10240M
 
 setup_child() {
@@ -68,15 +71,17 @@ cp /etc/pacman.d/mirrorlist "${NEWROOT}"/etc/pacman.d/mirrorlist
 
 umount -l dev sys proc run tmp
 
-mke2fs -L vmroot -d "${NEWROOT}" "${IMAGE}" "${PARTSIZE}"
+mke2fs -L "${IMAGETAG}" -U "${UUID}" -d "${NEWROOT}" "${IMAGE}" "${PARTSIZE}"
 EOF
 chmod +x "${NEWROOT}"/init
 
-mkdir -p "$imagedir"
+mkdir -p "$layerdir" "$tagdir"
 
 mkfifo $FIFO
 setup_child &
 unshare --cgroup --ipc --uts --mount --user --keep-caps "${NEWROOT}"/init
+
+echo "$UUID" | tee "$tagdir/$IMAGETAG"
 
 rm "${NEWROOT}"/init
 rmdir "${NEWROOT}"
