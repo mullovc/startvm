@@ -6,7 +6,7 @@ imagedir="$datadir/images"
 
 NEWROOT=$(mktemp -d)
 FIFO=$(mktemp -u)
-IMAGE="$imagedir/${1:-base}.ext2"
+IMAGEBASE="$imagedir/${1:-base}"
 PARTSIZE=10240M
 
 setup_child() {
@@ -68,7 +68,9 @@ cp /etc/pacman.d/mirrorlist "${NEWROOT}"/etc/pacman.d/mirrorlist
 
 umount -l dev sys proc run tmp
 
-mke2fs -L vmroot -d "${NEWROOT}" "${IMAGE}" "${PARTSIZE}"
+mke2fs -L vmroot -d "${NEWROOT}" "${IMAGEBASE}.ext2" "${PARTSIZE}"
+qemu-img convert -f raw -O qcow2 "${IMAGEBASE}.ext2" "${IMAGEBASE}.qcow2"
+rm -i "${IMAGEBASE}.ext2"
 EOF
 chmod +x "${NEWROOT}"/init
 

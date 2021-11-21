@@ -101,7 +101,7 @@ done
 
 
 vmname="${1:-$defaultimage}"
-image="${imagedir}/${vmname}.ext2"
+image="${imagedir}/${vmname}.qcow2"
 
 [[ ${mutable:-} = y ]] || additional_params+=(-snapshot)
 [[ $VGA = none ]] || additional_params+=(-display gtk,gl=on,full-screen="$fullscreen")
