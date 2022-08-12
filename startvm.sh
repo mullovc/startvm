@@ -11,6 +11,7 @@ datadir="${XDG_DATA_DIR:-$HOME/.local/share}/startvm"
 imagedir="$datadir/images"
 bootfiledir="$datadir/boot"
 defaultimage=base
+usekernel=y
 kernel="/boot/vmlinuz-linux"
 initrd="$bootfiledir/initrd-virtio.img"
 rootdevice="LABEL=vmroot"
@@ -29,8 +30,8 @@ usage: $0 [options] [VM name]
 start a KVM virtual machine
 
     -h      print this help and exit
-    -H      use host kernel and initrd image
-    -a      append to kernel commandline (implied -H)
+    -N      don't use host kernel and initrd image
+    -a      append to kernel commandline
     -A      audio
     -s      non-graphical mode (serial port)
     -M      mutable VM
@@ -42,15 +43,15 @@ EOF
 }
 
 OPTIND=1
-while getopts 'hHMsAa:F:BQ:m:' opt
+while getopts 'hNMsAa:v:Q:m:' opt
 do
     case "$opt" in
         h)
             show_usage
             exit 0
             ;;
-        H)
-            usekernel=y
+        N)
+            usekernel=n
             ;;
         a)
             usekernel=y
