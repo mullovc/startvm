@@ -34,7 +34,7 @@ start a KVM virtual machine
     -A      audio
     -s      non-graphical mode (serial port)
     -M      mutable VM
-    -B      use Seabios firmware
+    -v      expose directory inside VM
     -Q      additional Qemu parameters
     -m      amount of virtual memory
 
@@ -68,14 +68,12 @@ do
         M)
             mutable=y
             ;;
-        F)
-            fatrorw=ro
-            fatsnapshot=on
-            [[ $fatrorw = rw ]] && fatsnapshot=off
-            additional_params+=(-drive "if=virtio,snapshot=$fatsnapshot,file=fat:$fatrorw:${OPTARG}")
-            ;;
-        B)
-            BIOS="/usr/share/qemu/bios-256k.bin"
+        v)
+            IFS=: read -r volsource voltarget rorw <<< "$OPTARG"
+            snapshot=on
+            [[ ${rorw:-ro} = rw ]] && snapshot=off
+            additional_params+=(-drive "if=virtio,snapshot=$snapshot,file=fat:${rorw:-ro}:$volsource")
+            cmdline+=("voltarget=$voltarget")
             ;;
         Q)
             # explicitly do not escape

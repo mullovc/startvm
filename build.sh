@@ -20,8 +20,8 @@ else
     buildcontext="$2"
 fi
 
-./startvm.sh -s -M -a quiet \
+startvm.sh -s -M -a quiet \
     -a "systemd.unit=basic.target" \
     -a "systemd.wants=builder.service" \
-    -F "$buildcontext" \
+    -v "$buildcontext" \
     "$image"
