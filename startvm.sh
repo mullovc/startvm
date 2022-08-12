@@ -107,7 +107,7 @@ image="${imagedir}/${vmname}.qcow2"
 
 if [[ ${usekernel:-} = y ]]; then
     cmdline+=("root=$rootdevice rw")
-    additional_params+=(-drive if=virtio,snapshot=on,file="$bootfiledir/kernelmodules.ext2")
+    additional_params+=(-drive if=virtio,readonly=on,file="$bootfiledir/kernelmodules.ext2")
     additional_params+=(-kernel "$kernel" -initrd "$initrd")
     additional_params+=(-append "${cmdline[*]}")
 fi
