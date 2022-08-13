@@ -3,7 +3,7 @@ set -u
 
 # default configuration options
 BIOS="/usr/share/qemu/bios-256k.bin"
-VGA=virtio
+VGA=virgl
 memory=4096
 ncpus=1
 fullscreen=off
@@ -104,12 +104,11 @@ image="${imagedir}/${vmname}.qcow2"
 
 [[ ${mutable:-} = y ]] || additional_params+=(-snapshot)
 [[ $VGA = none ]] || additional_params+=(-display gtk,gl=on,full-screen="$fullscreen")
-[[ $VGA = virgl ]] && additional_params+=(-device virtio-gpu-gl-pci)
-[[ $VGA = virtio ]] && additional_params+=(-device virtio-vga-gl)
+[[ $VGA = virgl ]] && additional_params+=(-device virtio-gpu-gl-device)
 if [[ $VGA = virgl-vhost-user ]]; then
     vgpuuuid="$(uuidgen)"
     additional_params+=(-chardev socket,id=vgpu,path=/var/tmp/vgpu-"$vgpuuuid".sock)
-    additional_params+=(-device vhost-user-gpu-pci,chardev=vgpu)
+    additional_params+=(-device vhost-user-gpu,chardev=vgpu)
     additional_params+=(-object memory-backend-memfd,id=mem,size=4G,share=on)
     additional_params+=(-numa node,memdev=mem)
     # XXX wait until socket creation finished?
@@ -118,19 +117,28 @@ fi
 
 if [[ ${usekernel:-} = y ]]; then
     cmdline+=("root=$rootdevice rw")
-    additional_params+=(-drive if=virtio,readonly=on,file="$bootfiledir/kernelmodules.ext2")
+    additional_params+=(-blockdev driver=file,node-name=file1,read-only=on,filename="$bootfiledir/kernelmodules.ext2")
+    additional_params+=(-blockdev driver=raw,node-name=drv1,read-only=on,file=file1)
+    additional_params+=(-device virtio-blk-device,drive=drv1)
     additional_params+=(-kernel "$kernel" -initrd "$initrd")
     additional_params+=(-append "${cmdline[*]}")
 fi
 
 
 qemu-system-x86_64 \
-    -machine accel=kvm,vmport=on \
+    -machine accel=kvm \
+    -machine microvm \
+    -global virtio-mmio.force-legacy=false \
     -cpu host \
     -smp ${ncpus} \
     -m ${memory} \
-    -bios "$BIOS" \
     -sandbox on,spawn=deny \
     -nodefaults \
-    -nic user,model=virtio-net-pci,hostfwd="tcp:127.0.0.1:$sshport-:22" \
-    -drive if=virtio,file="${image}" "${additional_params[@]}"
+    -device virtio-rng-device \
+    -device virtio-keyboard-device \
+    -device virtio-mouse-device \
+    -netdev user,id=net0,hostfwd="tcp:127.0.0.1:$sshport-:22" \
+    -device virtio-net-device,netdev=net0 \
+    -blockdev driver=file,node-name=file0,filename="${image}" \
+    -blockdev driver=qcow2,node-name=drv0,file=file0 \
+    -device virtio-blk-device,drive=drv0 "${additional_params[@]}"
