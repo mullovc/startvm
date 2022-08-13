@@ -117,8 +117,7 @@ fi
 
 if [[ ${usekernel:-} = y ]]; then
     cmdline+=("root=$rootdevice rw")
-    additional_params+=(-blockdev driver=file,node-name=file1,read-only=on,filename="$bootfiledir/kernelmodules.ext2")
-    additional_params+=(-blockdev driver=raw,node-name=drv1,read-only=on,file=file1)
+    additional_params+=(-drive if=none,format=raw,id=drv1,readonly=on,file="$bootfiledir/kernelmodules.ext2")
     additional_params+=(-device virtio-blk-device,drive=drv1)
     additional_params+=(-kernel "$kernel" -initrd "$initrd")
     additional_params+=(-append "${cmdline[*]}")
@@ -139,6 +138,5 @@ qemu-system-x86_64 \
     -device virtio-mouse-device \
     -netdev user,id=net0,hostfwd="tcp:127.0.0.1:$sshport-:22" \
     -device virtio-net-device,netdev=net0 \
-    -blockdev driver=file,node-name=file0,filename="${image}" \
-    -blockdev driver=qcow2,node-name=drv0,file=file0 \
+    -drive if=none,format=qcow2,id=drv0,file="${image}" \
     -device virtio-blk-device,drive=drv0 "${additional_params[@]}"
