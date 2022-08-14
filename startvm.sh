@@ -99,17 +99,23 @@ do
     sshport=$((sshport+1))
 done
 
+vmname="${1:-$defaultimage}"
+if [[ -f ${imagedir}/${vmname}.qcow2 ]]; then
+    image="${imagedir}/${vmname}.qcow2"
+else
+    image="${imagedir}/${vmname}.ext2"
+fi
 
 [[ ${mutable:-} = y ]] || additional_params+=(-snapshot)
 [[ $VGA = none ]] || additional_params+=(-display gtk,gl=on,full-screen="$fullscreen")
 [[ $VGA = virgl ]] && additional_params+=(-device virtio-gpu-gl-pci)
 [[ $VGA = virtio ]] && additional_params+=(-device virtio-vga-gl)
 if [[ $VGA = virgl-vhost-user ]]; then
-    vgpuuuid="$(uuidgen)"
-    additional_params+=(-chardev socket,id=vgpu,path=/var/tmp/vgpu-"$vgpuuuid".sock)
+    socket="/var/tmp/vgpu-$(uuidgen).sock"
+    additional_params+=(-chardev socket,id=vgpu,path="$socket")
     additional_params+=(-device vhost-user-gpu-pci,chardev=vgpu)
     # XXX wait until socket creation finished?
-    /usr/lib/qemu/vhost-user-gpu --virgl --socket-path /var/tmp/vgpu-"$vgpuuuid".sock &
+    /usr/lib/qemu/vhost-user-gpu --virgl --socket-path "$socket" &
 fi
 if [[ $vhost_user ]]; then
     additional_params+=(-object memory-backend-memfd,id=mem,size=4G,share=on)
@@ -117,13 +123,18 @@ if [[ $vhost_user ]]; then
 fi
 
 if [[ ${usekernel:-} = y ]]; then
+    socket="/var/tmp/blk-$(uuidgen).sock"
     cmdline+=("root=$rootdevice rw")
     additional_params+=(-device vhost-user-blk-pci,chardev=drv1)
-    additional_params+=(-chardev socket,id=drv1,path=/var/tmp/blk-2.sock)
+    additional_params+=(-chardev socket,id=drv1,path="$socket")
     additional_params+=(-kernel "$kernel" -initrd "$initrd")
     additional_params+=(-append "${cmdline[*]}")
+    snapshot=0 ./vhost-user-blk.sh --socket-path "$socket" "$bootfiledir/kernelmodules.ext2" &
 fi
 
+
+socket="/var/tmp/blk-$(uuidgen).sock"
+./vhost-user-blk.sh --socket-path "$socket" "$image" &
 
 qemu-system-x86_64 \
     -machine accel=kvm,vmport=on \
@@ -135,4 +146,4 @@ qemu-system-x86_64 \
     -nodefaults \
     -nic user,model=virtio-net-pci,hostfwd="tcp:127.0.0.1:$sshport-:22" \
     -device vhost-user-blk-pci,chardev=drv0 \
-    -chardev socket,id=drv0,path=/var/tmp/blk.sock "${additional_params[@]}"
+    -chardev socket,id=drv0,path="$socket" "${additional_params[@]}"
