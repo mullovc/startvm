@@ -3,6 +3,7 @@ set -u
 
 # default configuration options
 BIOS="/usr/share/qemu/bios-256k.bin"
+vhost_user=y
 VGA=virtio
 memory=4096
 ncpus=1
@@ -99,9 +100,6 @@ do
 done
 
 
-vmname="${1:-$defaultimage}"
-image="${imagedir}/${vmname}.qcow2"
-
 [[ ${mutable:-} = y ]] || additional_params+=(-snapshot)
 [[ $VGA = none ]] || additional_params+=(-display gtk,gl=on,full-screen="$fullscreen")
 [[ $VGA = virgl ]] && additional_params+=(-device virtio-gpu-gl-pci)
@@ -110,15 +108,18 @@ if [[ $VGA = virgl-vhost-user ]]; then
     vgpuuuid="$(uuidgen)"
     additional_params+=(-chardev socket,id=vgpu,path=/var/tmp/vgpu-"$vgpuuuid".sock)
     additional_params+=(-device vhost-user-gpu-pci,chardev=vgpu)
-    additional_params+=(-object memory-backend-memfd,id=mem,size=4G,share=on)
-    additional_params+=(-numa node,memdev=mem)
     # XXX wait until socket creation finished?
     /usr/lib/qemu/vhost-user-gpu --virgl --socket-path /var/tmp/vgpu-"$vgpuuuid".sock &
+fi
+if [[ $vhost_user ]]; then
+    additional_params+=(-object memory-backend-memfd,id=mem,size=4G,share=on)
+    additional_params+=(-numa node,memdev=mem)
 fi
 
 if [[ ${usekernel:-} = y ]]; then
     cmdline+=("root=$rootdevice rw")
-    additional_params+=(-drive if=virtio,readonly=on,file="$bootfiledir/kernelmodules.ext2")
+    additional_params+=(-device vhost-user-blk-pci,chardev=drv1)
+    additional_params+=(-chardev socket,id=drv1,path=/var/tmp/blk-2.sock)
     additional_params+=(-kernel "$kernel" -initrd "$initrd")
     additional_params+=(-append "${cmdline[*]}")
 fi
@@ -133,4 +134,5 @@ qemu-system-x86_64 \
     -sandbox on,spawn=deny \
     -nodefaults \
     -nic user,model=virtio-net-pci,hostfwd="tcp:127.0.0.1:$sshport-:22" \
-    -drive if=virtio,file="${image}" "${additional_params[@]}"
+    -device vhost-user-blk-pci,chardev=drv0 \
+    -chardev socket,id=drv0,path=/var/tmp/blk.sock "${additional_params[@]}"
