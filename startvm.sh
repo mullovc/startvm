@@ -63,8 +63,12 @@ do
         s)
             VGA=none
             usekernel=y
-            cmdline+=("console=ttyS0 panic=1")
-            additional_params+=(-nographic -serial mon:stdio -no-reboot)
+            cmdline+=("console=hvc0 panic=1")
+            additional_params+=(-device virtio-serial-device)
+            additional_params+=(-chardev stdio,id=virtiocon0,mux=on)
+            additional_params+=(-device virtconsole,chardev=virtiocon0)
+            additional_params+=(-monitor chardev:virtiocon0)
+            additional_params+=(-no-reboot -nographic)
             ;;
         M)
             mutable=y
@@ -126,7 +130,7 @@ fi
 
 qemu-system-x86_64 \
     -machine accel=kvm \
-    -machine microvm \
+    -machine microvm,isa-serial=off \
     -global virtio-mmio.force-legacy=false \
     -cpu host \
     -smp ${ncpus} \
