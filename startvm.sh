@@ -125,11 +125,7 @@ if [[ ${usekernel:-} = y ]]; then
 fi
 
 socket="$(mktemp -u)"
-#unshare -rm /usr/lib/qemu/virtiofsd --socket-path="$socket" -o source=/usr &
-#unshare --mount --map-users=auto -S 0 --map-groups=auto -G 0 sh -c "
-unshare --mount --map-user=0 --map-groups=auto -G 0 sh -c "
-    mount -t tmpfs tmp /var/run &&
-    /usr/lib/qemu/virtiofsd --socket-path=$socket -o source=/usr --rlimit-nofile=16384" &
+/usr/lib/virtiofsd --socket-path=$socket --shared-dir /usr --rlimit-nofile=16384 &
 
 qemu-system-x86_64 \
     -chardev socket,id=char0,path="$socket" \
