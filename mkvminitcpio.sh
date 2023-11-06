@@ -11,7 +11,7 @@ imagename="initrd-virtio+virtiofs.img"
 
 mkdir -p "$bootfiledir"
 
-unshare -r mkinitcpio \
+unshare --map-auto --map-root-user mkinitcpio \
     -g "${bootfiledir}/${imagename}" \
     -k "${kernel}" \
     -c "${config}" \

@@ -1,0 +1,27 @@
+#!/bin/bash
+set -eu
+
+
+out="$1"
+rootdir="$(mktemp -d)"
+package_cache=/var/cache/pacman/pkg
+
+while read -r pkg ver
+do
+    [[ -f /var/cache/pacman/pkg/$pkg-$ver-x86_64.pkg.tar.zst ]] && arch=x86_64
+    [[ -f /var/cache/pacman/pkg/$pkg-$ver-any.pkg.tar.zst ]] && arch=any
+    [[ ${arch:-} ]] || continue
+
+    #tar -tf /var/cache/pacman/pkg/"$pkg-$ver-$arch.pkg.tar.zst" etc |
+    #    grep -v ^usr | grep -v ^opt | grep -v '^\.' | grep -v /$
+
+    # extract /etc, /var and symlinks from the "filesystem" package
+    tar -C "$rootdir" -xf "$package_cache/$pkg-$ver-$arch.pkg.tar.zst" etc var bin lib lib64 sbin || true
+
+done < <(pacman -Q)
+
+pushd "$rootdir"
+find . | cpio -H newc -o --owner="+0:+0" | zstd > "$out"
+popd
+
+rm -rf "$rootdir"
