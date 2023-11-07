@@ -9,13 +9,6 @@ run_latehook() {
 
     mkdir "$mountpath"
     mount ${mountflags:+-o $mountflags} -t virtiofs "$tag" "$mountpath"
-
-    cd /new_root
-    mkdir run tmp var opt srv etc boot dev sys root proc
-    ln -s usr/lib lib64
-    ln -s usr/bin usr/sbin usr/lib .
-    ln -s ../run var/run
-    cd -
 }
 
 # vim: set ft=sh ts=4 sw=4 et:

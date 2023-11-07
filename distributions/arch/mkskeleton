@@ -4,6 +4,7 @@ set -eu
 
 out="$1"
 rootdir="$(mktemp -d)"
+mkdir "$rootdir/copy_to_root"
 package_cache=/var/cache/pacman/pkg
 
 while read -r pkg ver
@@ -16,7 +17,7 @@ do
     #    grep -v ^usr | grep -v ^opt | grep -v '^\.' | grep -v /$
 
     # extract /etc, /var and symlinks from the "filesystem" package
-    tar -C "$rootdir" -xf "$package_cache/$pkg-$ver-$arch.pkg.tar.zst" etc var bin lib lib64 sbin || true
+    tar -C "$rootdir/copy_to_root" -xf "$package_cache/$pkg-$ver-$arch.pkg.tar.zst" etc var bin lib lib64 sbin || true
 
 done < <(pacman -Q)
 
