@@ -25,4 +25,4 @@ pushd "$rootdir"
 find . | cpio -H newc -o --owner="+0:+0" | zstd > "$out"
 popd
 
-rm -rf "$rootdir"
+rm -rf "$rootdir" || true
