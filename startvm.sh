@@ -110,7 +110,18 @@ done
 #fi
 
 [[ ${mutable:-} = y ]] || additional_params+=(-snapshot)
-[[ $VGA = none ]] || additional_params+=(-display gtk,gl=on,full-screen="$fullscreen")
+[[ $VGA = none ]] || additional_params+=(-display gtk,gl=on,full-screen="$fullscreen",show-cursor=on)
+[[ $VGA = virgl ]] && additional_params+=(-device virtio-gpu-gl-pci)
+[[ $VGA = virtio ]] && additional_params+=(-device virtio-vga-gl)
+if [[ $VGA = virgl-vhost-user ]]; then
+    vgpuuuid="$(uuidgen)"
+    additional_params+=(-chardev socket,id=vgpu,path=/var/tmp/vgpu-"$vgpuuuid".sock)
+    additional_params+=(-device vhost-user-gpu-pci,chardev=vgpu)
+    additional_params+=(-object memory-backend-memfd,id=mem,size=4G,share=on)
+    additional_params+=(-numa node,memdev=mem)
+    # XXX wait until socket creation finished?
+    /usr/lib/qemu/vhost-user-gpu --virgl --socket-path /var/tmp/vgpu-"$vgpuuuid".sock &
+fi
 
 cmdline+=("systemd.set_credential=passwd.hashed-password.root:$(openssl passwd -6 root)")
 cmdline+=("systemd.set_credential=firstboot.locale:C.UTF-8")
@@ -141,8 +152,8 @@ qemu-system-x86_64 \
     -sandbox on,spawn=deny \
     -nodefaults \
     -nic user,model=virtio-net-pci,hostfwd="tcp:127.0.0.1:$sshport-:22" \
-    -vga "$VGA" \
     "${additional_params[@]}"
+    #-vga "$VGA" \
     #-drive if=virtio,file="${image}" "${additional_params[@]}"
     #-fw_cfg name=opt/com.name.domain.your.example,string=1 \
 
