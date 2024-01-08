@@ -58,7 +58,8 @@ do
             cmdline+=("${OPTARG}")
             ;;
         A)
-            additional_params+=(-device ES1370)
+            additional_params+=(-device virtio-sound-pci,audiodev=my_audiodev)
+            additional_params+=(-audiodev pa,id=my_audiodev)
             ;;
         s)
             VGA=none
