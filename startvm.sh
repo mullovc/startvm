@@ -2,7 +2,7 @@
 set -u
 
 # default configuration options
-BIOS="/usr/share/qemu/bios-256k.bin"
+BIOS="/usr/share/qemu/bios-microvm.bin"
 VGA=virgl
 memory=4096
 ncpus=1
@@ -13,9 +13,9 @@ bootfiledir="$datadir/boot"
 defaultimage=base
 usekernel=y
 kernel="/boot/vmlinuz-linux"
-initrd="$bootfiledir/initrd-virtio.img"
+initrd="$bootfiledir/initrd-virtio-micro.img"
 rootdevice="LABEL=vmroot"
-cmdline=()
+cmdline=("pci=off")
 additional_params=()
 
 # user configuration
@@ -131,6 +131,7 @@ fi
 qemu-system-x86_64 \
     -machine accel=kvm \
     -machine microvm,isa-serial=off \
+    -bios "$BIOS" \
     -global virtio-mmio.force-legacy=false \
     -cpu host \
     -smp ${ncpus} \

@@ -37,7 +37,7 @@ mount -t tmpfs tmp "${NEWROOT}"/tmp
 mount -o rbind,ro,nodev,nousid,noexec /sys "${NEWROOT}"/sys
 mount -o rbind,ro,nodev,nousid,noexec /run "${NEWROOT}"/run
 
-mount -t tmpfs udev "${NEWROOT}"/dev
+mount -t tmpfs -o mode=755 udev "${NEWROOT}"/dev
 ln -s /proc/self/fd/0 "${NEWROOT}"/dev/stdin
 ln -s /proc/self/fd/1 "${NEWROOT}"/dev/stdout
 ln -s /proc/self/fd/2 "${NEWROOT}"/dev/stderr

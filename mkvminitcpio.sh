@@ -38,7 +38,7 @@ kver() {
 
 mkdir -p "$bootfiledir"
 
-unshare -r mkinitcpio \
+unshare --map-auto -r mkinitcpio \
     -g "${bootfiledir}/${imagename}" \
     -k "${kernel}" \
     -c "${config}" \
